@@ -1,0 +1,201 @@
+{{- /*
+Service Accounts, Roles, and RoleBindings for all teams
+*/ -}}
+
+{{- /*
+Default Scheduler Teams RBAC
+*/ -}}
+{{- range .Values.teams.defaultScheduler }}
+---
+# Service Account for {{ .displayName }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .serviceAccount.name }}
+  namespace: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    team: {{ .name }}
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+
+---
+# Role for {{ .displayName }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: spark-role
+  namespace: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    team: {{ .name }}
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+rules:
+# Core Kubernetes resources
+- apiGroups: [""]
+  resources:
+    - pods
+    - services
+    - configmaps
+    - persistentvolumeclaims
+  verbs:
+    {{- toYaml $.Values.rbac.defaultScheduler.verbs.standard | nindent 4 }}
+
+# Pod logs
+- apiGroups: [""]
+  resources:
+    - pods/log
+  verbs:
+    {{- toYaml $.Values.rbac.defaultScheduler.verbs.logs | nindent 4 }}
+
+# Pod exec
+- apiGroups: [""]
+  resources:
+    - pods/exec
+  verbs:
+    {{- toYaml $.Values.rbac.defaultScheduler.verbs.exec | nindent 4 }}
+
+# Spark Operator resources
+- apiGroups: ["sparkoperator.k8s.io"]
+  resources:
+    - sparkapplications
+    - scheduledsparkapplications
+  verbs:
+    {{- toYaml $.Values.rbac.defaultScheduler.verbs.standard | nindent 4 }}
+
+---
+# RoleBinding for {{ .displayName }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: spark-role-binding
+  namespace: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    team: {{ .name }}
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+subjects:
+- kind: ServiceAccount
+  name: {{ .serviceAccount.name }}
+  namespace: {{ .name }}
+roleRef:
+  kind: Role
+  name: spark-role
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+
+{{- /*
+Volcano Scheduler Teams RBAC
+*/ -}}
+{{- range .Values.teams.volcanoScheduler }}
+---
+# Service Account for {{ .displayName }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .serviceAccount.name }}
+  namespace: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    team: {{ .name }}
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+
+---
+# Role for {{ .displayName }} with Volcano permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: spark-volcano-role
+  namespace: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    team: {{ .name }}
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+rules:
+# Core Kubernetes resources
+- apiGroups: [""]
+  resources:
+    - pods
+    - services
+    - configmaps
+    - persistentvolumeclaims
+  verbs:
+    {{- toYaml $.Values.rbac.defaultScheduler.verbs.standard | nindent 4 }}
+
+# Pod logs
+- apiGroups: [""]
+  resources:
+    - pods/log
+  verbs:
+    {{- toYaml $.Values.rbac.defaultScheduler.verbs.logs | nindent 4 }}
+
+# Pod exec
+- apiGroups: [""]
+  resources:
+    - pods/exec
+  verbs:
+    {{- toYaml $.Values.rbac.defaultScheduler.verbs.exec | nindent 4 }}
+
+# Spark Operator resources
+- apiGroups: ["sparkoperator.k8s.io"]
+  resources:
+    - sparkapplications
+    - scheduledsparkapplications
+  verbs:
+    {{- toYaml $.Values.rbac.defaultScheduler.verbs.standard | nindent 4 }}
+
+# Volcano resources
+- apiGroups: ["batch.volcano.sh"]
+  resources:
+    - jobs
+  verbs:
+    {{- toYaml $.Values.rbac.defaultScheduler.verbs.standard | nindent 4 }}
+
+- apiGroups: ["scheduling.volcano.sh"]
+  resources:
+    - podgroups
+    - queues
+  verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+
+---
+# RoleBinding for {{ .displayName }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: spark-volcano-role-binding
+  namespace: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    team: {{ .name }}
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+subjects:
+- kind: ServiceAccount
+  name: {{ .serviceAccount.name }}
+  namespace: {{ .name }}
+roleRef:
+  kind: Role
+  name: spark-volcano-role
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

@@ -1,0 +1,37 @@
+# GitHub App Secrets - NEVER commit these!
+*.pem
+*.key
+*private-key*
+k8s-platform/secrets/github-app-secret.yaml
+k8s-platform/secrets/*credentials*.yaml
+
+# Kubernetes secrets (plain)
+*secret.yaml
+*-secret.yaml
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Helm
+*.tgz
+charts/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+CLAUDE.md
+.claude/

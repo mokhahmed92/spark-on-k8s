@@ -1,0 +1,62 @@
+# ==========================================
+# Volcano Queues Configuration
+# ==========================================
+
+# Individual Team Queues
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: queue-theta
+spec:
+  weight: 40
+  capability:
+    cpu: "8000m"
+    memory: "16Gi"
+  reclaimable: true
+  guarantee:
+    resource:
+      cpu: "4000m"
+      memory: "8Gi"
+---
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: queue-delta
+spec:
+  weight: 40
+  capability:
+    cpu: "8000m"
+    memory: "16Gi"
+  reclaimable: true
+  guarantee:
+    resource:
+      cpu: "4000m"
+      memory: "8Gi"
+---
+# Default Queue for fallback
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: default
+spec:
+  weight: 20
+  reclaimable: false
+  capability:
+    cpu: "4000m"
+    memory: "8Gi"
+---
+# Shared Queue for New Teams (DS & DE)
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: batch-jobs-queue
+spec:
+  weight: 100
+  capability:
+    cpu: "16000m"
+    memory: "32Gi"
+  reclaimable: true
+  guarantee:
+    resource:
+      cpu: "8000m"
+      memory: "16Gi"

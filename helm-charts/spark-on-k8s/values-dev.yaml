@@ -1,0 +1,143 @@
+# Development values for spark-on-k8s
+# Lightweight deployment without Volcano for local development and testing
+
+# Global settings
+global:
+  createNamespaces: true
+
+# Volcano Scheduler - DISABLED for development
+volcano:
+  enabled: false
+
+# Spark Operator configuration - Minimal settings for development
+sparkOperator:
+  enabled: true
+
+  # Disable Volcano batch scheduler in dev
+  batchScheduler:
+    enable: false
+
+  controller:
+    replicas: 1
+    workers: 5
+    logLevel: info
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+  webhook:
+    enable: true
+    port: 9443
+    resources:
+      limits:
+        cpu: 50m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+  metrics:
+    enable: true
+    port: 8080
+    endpoint: /metrics
+
+  serviceAccounts:
+    spark:
+      create: false
+    sparkoperator:
+      create: true
+      name: spark-operator
+
+  leaderElection:
+    enable: false
+
+  resourceQuotaEnforcement:
+    enable: false
+
+# Development team configurations - Only 2 teams with default scheduler
+teams:
+  defaultScheduler:
+    - name: team-alpha
+      displayName: "Team Alpha - Dev"
+      labels:
+        team: team-alpha-id
+        environment: development
+      serviceAccount:
+        name: team-alpha-sa
+      resourceQuota:
+        enabled: true
+        requests:
+          cpu: "2"
+          memory: "4Gi"
+        limits:
+          cpu: "4"
+          memory: "8Gi"
+        pods: "5"
+
+    - name: team-beta
+      displayName: "Team Beta - Dev"
+      labels:
+        team: team-beta-id
+        environment: development
+      serviceAccount:
+        name: team-beta-sa
+      resourceQuota:
+        enabled: true
+        requests:
+          cpu: "2"
+          memory: "4Gi"
+        limits:
+          cpu: "4"
+          memory: "8Gi"
+        pods: "5"
+
+  volcanoScheduler: []
+
+# No Volcano queues in development
+queues:
+  individual: []
+  shared: []
+  default:
+    name: default
+    weight: 100
+    capability:
+      cpu: "4000m"
+      memory: "8Gi"
+    reclaimable: false
+
+# RBAC permissions
+rbac:
+  defaultScheduler:
+    verbs:
+      standard:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+      logs:
+        - get
+        - list
+      exec:
+        - create
+        - get
+
+  volcanoScheduler:
+    additionalVerbs:
+      - create
+      - update
+
+# Development labels
+commonLabels:
+  app.kubernetes.io/managed-by: Helm
+  app.kubernetes.io/part-of: spark-on-k8s
+  environment: development
+
+commonAnnotations:
+  purpose: "Development and testing environment"

@@ -1,0 +1,93 @@
+{{- /*
+Volcano Queue Definitions
+Creates queues for team-based resource scheduling
+*/ -}}
+
+{{- if .Values.sparkOperator.batchScheduler.enable }}
+
+{{- /*
+Individual Team Queues
+*/ -}}
+{{- range .Values.queues.individual }}
+---
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    queue-type: individual
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  weight: {{ .weight }}
+  {{- with .capability }}
+  capability:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .guarantee }}
+  guarantee:
+    resource:
+      {{- toYaml .guarantee | nindent 6 }}
+  {{- end }}
+  reclaimable: {{ .reclaimable }}
+{{- end }}
+
+{{- /*
+Shared Queues
+*/ -}}
+{{- range .Values.queues.shared }}
+---
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    queue-type: shared
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  weight: {{ .weight }}
+  {{- with .capability }}
+  capability:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .guarantee }}
+  guarantee:
+    resource:
+      {{- toYaml .guarantee | nindent 6 }}
+  {{- end }}
+  reclaimable: {{ .reclaimable }}
+{{- end }}
+
+{{- /*
+Default Fallback Queue
+*/ -}}
+{{- with .Values.queues.default }}
+---
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    queue-type: default
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  weight: {{ .weight }}
+  {{- with .capability }}
+  capability:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  reclaimable: {{ .reclaimable }}
+{{- end }}
+
+{{- end }}

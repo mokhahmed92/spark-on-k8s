@@ -1,0 +1,67 @@
+# Spark Operator values with Volcano scheduler support
+# This configuration enables Volcano for new teams while maintaining default scheduler for existing teams
+
+spark:
+  # Watch all team namespaces
+  jobNamespaces:
+  - team-alpha    
+  - team-beta      
+  - team-theta     
+  - team-delta     
+
+# Enable batch scheduler support
+batchScheduler:
+  enable: true
+  
+# Controller configuration
+controller:
+  replicas: 1
+  workers: 10
+  logLevel: info
+  
+  # Resource limits for the controller
+  resources:
+    limits:
+      cpu: 200m
+      memory: 500Mi
+    requests:
+      cpu: 100m
+      memory: 300Mi
+
+# Webhook configuration
+webhook:
+  enable: true
+  port: 9443
+  
+  # Resource limits for the webhook
+  resources:
+    limits:
+      cpu: 100m
+      memory: 300Mi
+    requests:
+      cpu: 100m
+      memory: 300Mi
+
+# Metrics configuration
+metrics:
+  enable: true
+  port: 8080
+  endpoint: /metrics
+
+# Service accounts
+serviceAccounts:
+  spark:
+    create: false  # Using team-specific service accounts
+  sparkoperator:
+    create: true
+    name: spark-operator
+
+# Leader election for HA
+leaderElection:
+  enable: true
+  lockName: spark-operator-lock
+  lockNamespace: spark-operator
+
+# Resource quota enforcement
+resourceQuotaEnforcement:
+  enable: false  # Managed at namespace level

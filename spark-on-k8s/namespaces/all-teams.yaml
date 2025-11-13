@@ -1,0 +1,39 @@
+# Spark Operator Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spark-operator
+  labels:
+    name: spark-operator
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-alpha
+  labels:
+    name: team-alpha
+    team: team-alpha-id
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-beta
+  labels:
+    name: team-beta
+    team: team-beta-id
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-theta
+  labels:
+    name: team-theta
+    team: team-theta-id
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-delta
+  labels:
+    name: team-delta
+    team: team-delta-id

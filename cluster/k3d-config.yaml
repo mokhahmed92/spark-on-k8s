@@ -1,0 +1,31 @@
+apiVersion: k3d.io/v1alpha4
+kind: Simple
+metadata:
+  name: dp-cluster
+servers: 1  # 1 server (control-plane) node
+agents: 2   # 2 agent nodes
+# This section configures the k3d cluster
+options:
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+      - arg: --disable=metrics-server=false
+        nodeFilters:
+          - server:*
+    nodeLabels:
+      - label: type=worker
+        nodeFilters:
+          - agent:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+# Port mappings for the cluster
+ports:
+  - port: 8080:80     # map local port 8080 to port 80 on the cluster
+    nodeFilters:
+      - loadbalancer
+  - port: 8443:443    # map local port 8443 to port 443 on the cluster
+    nodeFilters:
+      - loadbalancerclear
