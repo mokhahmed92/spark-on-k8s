@@ -1,0 +1,9 @@
+dependencies:
+- name: spark-operator
+  repository: https://kubeflow.github.io/spark-operator
+  version: 2.0.2
+- name: volcano
+  repository: https://volcano-sh.github.io/helm-charts
+  version: 1.10.0
+digest: sha256:7bbe81e52425a71aeb7df9d8508ca4ad348d9c843a912869e8c3a256597773be
+generated: "2025-11-15T12:59:13.824513341+01:00"

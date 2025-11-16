@@ -1,0 +1,51 @@
+{{- /*
+Resource Quotas for Team Namespaces
+Enforces hard limits on resource consumption per team
+All teams use Volcano scheduler
+*/ -}}
+
+{{- range .Values.teams }}
+{{- if .resourceQuota.enabled }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ .name }}-quota
+  namespace: {{ .name }}
+  labels:
+    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
+    team: {{ .name }}
+    scheduler: volcano
+    {{- if .queue.name }}
+    volcano-queue: {{ .queue.name }}
+    {{- end }}
+  {{- with (include "spark-on-k8s.annotations" $) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  hard:
+    {{- with .resourceQuota.requests }}
+    {{- if .cpu }}
+    requests.cpu: {{ .cpu | quote }}
+    {{- end }}
+    {{- if .memory }}
+    requests.memory: {{ .memory | quote }}
+    {{- end }}
+    {{- end }}
+    {{- with .resourceQuota.limits }}
+    {{- if .cpu }}
+    limits.cpu: {{ .cpu | quote }}
+    {{- end }}
+    {{- if .memory }}
+    limits.memory: {{ .memory | quote }}
+    {{- end }}
+    {{- end }}
+    {{- if .resourceQuota.pods }}
+    pods: {{ .resourceQuota.pods | quote }}
+    {{- end }}
+    {{- if .resourceQuota.persistentvolumeclaims }}
+    persistentvolumeclaims: {{ .resourceQuota.persistentvolumeclaims | quote }}
+    {{- end }}
+{{- end }}
+{{- end }}

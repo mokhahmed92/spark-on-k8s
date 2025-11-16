@@ -21,12 +21,3 @@
 .idea/
 *.tmproj
 .vscode/
-# CI/CD
-.github/
-.gitlab-ci.yml
-# Documentation (exclude from package, but keep README.md)
-docs/
-examples/
-*.md
-!README.md
-!Chart.yaml

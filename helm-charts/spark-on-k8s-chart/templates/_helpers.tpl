@@ -84,28 +84,12 @@ name: {{ .name }}
 
 {{/*
 Generate Spark Operator job namespaces list
+All teams use Volcano scheduler
 */}}
 {{- define "spark-on-k8s.jobNamespaces" -}}
 {{- $namespaces := list }}
-{{- range .Values.teams.defaultScheduler }}
-{{- $namespaces = append $namespaces .name }}
-{{- end }}
-{{- range .Values.teams.volcanoScheduler }}
+{{- range .Values.teams }}
 {{- $namespaces = append $namespaces .name }}
 {{- end }}
 {{- toJson $namespaces }}
-{{- end }}
-
-{{/*
-Check if team uses Volcano scheduler
-*/}}
-{{- define "spark-on-k8s.team.isVolcano" -}}
-{{- $teamName := .name }}
-{{- $isVolcano := false }}
-{{- range $.Values.teams.volcanoScheduler }}
-{{- if eq .name $teamName }}
-{{- $isVolcano = true }}
-{{- end }}
-{{- end }}
-{{- $isVolcano }}
 {{- end }}

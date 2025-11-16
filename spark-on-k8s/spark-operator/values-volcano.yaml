@@ -4,10 +4,12 @@
 spark:
   # Watch all team namespaces
   jobNamespaces:
-  - team-alpha    
-  - team-beta      
-  - team-theta     
-  - team-delta     
+  - team-alpha
+  - team-beta
+  - team-theta
+  - team-delta
+  - ds-team-ns
+  - de-team-ns     
 
 # Enable batch scheduler support
 batchScheduler:

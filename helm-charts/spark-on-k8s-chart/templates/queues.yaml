@@ -3,7 +3,7 @@ Volcano Queue Definitions
 Creates queues for team-based resource scheduling
 */ -}}
 
-{{- if .Values.sparkOperator.batchScheduler.enable }}
+{{- if and .Values.volcano.enabled .Values.createQueues }}
 
 {{- /*
 Individual Team Queues

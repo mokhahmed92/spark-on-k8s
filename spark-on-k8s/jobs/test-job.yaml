@@ -1,0 +1,135 @@
+# ==========================================
+# Volcano Scheduler Team Jobs
+# ==========================================
+
+# Team Theta Volcano Job
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: spark-volcano-test
+  namespace: team-theta
+spec:
+  type: Scala
+  mode: cluster
+  image: apache/spark:3.5.0
+  imagePullPolicy: IfNotPresent
+  mainClass: org.apache.spark.examples.SparkPi
+  mainApplicationFile: local:///opt/spark/examples/jars/spark-examples_2.12-3.5.0.jar
+  sparkVersion: "3.5.0"
+  batchScheduler: volcano
+  batchSchedulerOptions:
+    queue: queue-theta
+    priorityClassName: normal
+  restartPolicy:
+    type: Never
+  driver:
+    cores: 1
+    coreLimit: "1500m"
+    memory: "1024m"
+    labels:
+      version: 3.5.0
+      team: theta
+      scheduler: volcano
+    serviceAccount: team-theta-sa
+    annotations:
+      scheduling.volcano.sh/queue-name: queue-theta
+      scheduling.volcano.sh/priority-class: normal
+  executor:
+    cores: 1
+    coreLimit: "1000m"
+    instances: 2
+    memory: "1024m"
+    labels:
+      version: 3.5.0
+      team: theta
+    annotations:
+      scheduling.volcano.sh/queue-name: queue-theta
+  arguments:
+  - "2000"
+---
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: pyspark-volcano-test
+  namespace: team-delta
+spec:
+  type: Python
+  mode: cluster
+  image: apache/spark:3.5.0
+  imagePullPolicy: IfNotPresent
+  mainApplicationFile: local:///opt/spark/examples/src/main/python/pi.py
+  sparkVersion: "3.5.0"
+  batchScheduler: volcano
+  batchSchedulerOptions:
+    queue: queue-delta
+    priorityClassName: normal
+  restartPolicy:
+    type: Never
+  driver:
+    cores: 1
+    coreLimit: "1500m"
+    memory: "1024m"
+    labels:
+      version: 3.5.0
+      team: delta
+      scheduler: volcano
+    serviceAccount: team-delta-sa
+    annotations:
+      scheduling.volcano.sh/queue-name: queue-delta
+      scheduling.volcano.sh/priority-class: normal
+  executor:
+    cores: 1
+    coreLimit: "1000m"
+    instances: 2
+    memory: "1024m"
+    labels:
+      version: 3.5.0
+      team: delta
+    annotations:
+      scheduling.volcano.sh/queue-name: queue-delta
+  arguments:
+  - "1000"
+---
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: de-team-spark-test
+  namespace: de-team-ns
+spec:
+  type: Scala
+  mode: cluster
+  image: apache/spark:3.5.0
+  imagePullPolicy: IfNotPresent
+  mainClass: org.apache.spark.examples.SparkPi
+  mainApplicationFile: local:///opt/spark/examples/jars/spark-examples_2.12-3.5.0.jar
+  sparkVersion: "3.5.0"
+  batchScheduler: volcano
+  batchSchedulerOptions:
+    queue: batch-jobs-queue
+    priorityClassName: normal
+  restartPolicy:
+    type: Never
+  driver:
+    cores: 1
+    coreLimit: "1500m"
+    memory: "1024m"
+    labels:
+      version: 3.5.0
+      team: de-team
+      scheduler: volcano
+    serviceAccount: de-team-sa
+    annotations:
+      scheduling.volcano.sh/queue-name: batch-jobs-queue
+      scheduling.volcano.sh/priority-class: normal
+  executor:
+    cores: 1
+    coreLimit: "1000m"
+    instances: 3
+    memory: "1024m"
+    labels:
+      version: 3.5.0
+      team: de-team
+    annotations:
+      scheduling.volcano.sh/queue-name: batch-jobs-queue
+  arguments:
+  - "2000"

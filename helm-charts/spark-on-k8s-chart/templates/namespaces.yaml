@@ -13,9 +13,9 @@ metadata:
     {{- . | nindent 4 }}
   {{- end }}
 
-{{- range .Values.teams.defaultScheduler }}
+{{- range .Values.teams }}
 ---
-# Namespace for {{ .displayName }} (Default Scheduler)
+# Namespace for {{ .displayName }}
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -23,27 +23,6 @@ metadata:
   labels:
     {{- include "spark-on-k8s.team.labels" . | nindent 4 }}
     {{- include "spark-on-k8s.labels" $ | nindent 4 }}
-    scheduler: default
-  {{- with (include "spark-on-k8s.annotations" $) }}
-  annotations:
-    {{- . | nindent 4 }}
-  {{- end }}
-{{- end }}
-
-{{- range .Values.teams.volcanoScheduler }}
----
-# Namespace for {{ .displayName }} (Volcano Scheduler)
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ .name }}
-  labels:
-    {{- include "spark-on-k8s.team.labels" . | nindent 4 }}
-    {{- include "spark-on-k8s.labels" $ | nindent 4 }}
-    scheduler: volcano
-    {{- if .queue.name }}
-    volcano-queue: {{ .queue.name }}
-    {{- end }}
   {{- with (include "spark-on-k8s.annotations" $) }}
   annotations:
     {{- . | nindent 4 }}
