@@ -1,0 +1,45 @@
+# Speckit artifacts
+.claude
+/.claude/*
+.specify
+/.specify/*
+specs
+/specs/*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Java
+*.class
+*.jar
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*
+
+# Kubernetes secrets (never commit real secrets)
+*.secret.yaml.local
+kubeconfig*
+*.key
+*.crt
+
+# Docker build artifacts
+*.log
+
+docs/
+CLAUDE.md

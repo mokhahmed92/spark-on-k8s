@@ -1,0 +1,16 @@
+# Shared data PVC for volume-based tutorials
+# Uses NFS StorageClass for ReadWriteMany access across multiple nodes
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-data-pvc
+  namespace: spark
+  labels:
+    app: spark
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: 5Gi

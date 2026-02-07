@@ -1,0 +1,42 @@
+Apache Spark is a unified analytics engine for large-scale data processing.
+It provides high-level APIs in Java, Scala, Python, and R, and an optimized
+engine that supports general execution graphs. It also supports a rich set
+of higher-level tools including Spark SQL for SQL and structured data
+processing, pandas API on Spark for pandas workloads, MLlib for machine
+learning, GraphX for graph processing, and Structured Streaming for
+incremental and stream processing.
+
+Spark runs on Kubernetes natively using the spark-submit command. When you
+submit a Spark application to Kubernetes, the Spark scheduler creates driver
+and executor pods in the cluster. The driver pod coordinates the execution
+of tasks across executor pods. This native integration allows Spark to
+leverage Kubernetes for resource management and scheduling.
+
+Running Spark on Kubernetes offers several advantages. First, it provides
+resource isolation through containers and namespaces. Second, it enables
+dynamic resource allocation based on workload demands. Third, it integrates
+with the broader Kubernetes ecosystem for monitoring, logging, and security.
+
+MinIO is a high-performance object storage solution that is API-compatible
+with Amazon S3. It can be deployed on Kubernetes as a standalone server
+or in distributed mode. For development and learning purposes, standalone
+mode is sufficient. Spark can access MinIO using the S3A filesystem
+connector with the hadoop-aws library.
+
+The Spark History Server provides a web UI for viewing completed Spark
+applications. It reads event logs written by Spark applications and
+displays detailed information about jobs, stages, tasks, and executors.
+This is especially useful when running Spark on Kubernetes in cluster
+mode, where the driver pod may be deleted after the job completes.
+
+Kubernetes provides persistent storage through PersistentVolumes and
+PersistentVolumeClaims. Spark applications can use mounted volumes to
+read input data and write output data. For shared access across multiple
+pods on different nodes, ReadWriteMany access mode is required, which
+can be provided by NFS or similar network storage solutions.
+
+Direct S3 access using the S3A connector is the recommended approach for
+production Spark workloads. It eliminates the need for volume mounts and
+works seamlessly with cloud object storage services. The S3A connector
+requires the hadoop-aws and aws-java-sdk-bundle JARs to be available
+in the Spark classpath.

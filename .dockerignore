@@ -1,0 +1,37 @@
+# Git
+.git/
+.gitignore
+
+# Speckit / IDE
+.claude/
+.specify/
+specs/
+.vscode/
+.idea/
+
+# Documentation (not needed in image)
+docs/
+*.md
+
+# Scripts (not needed in image)
+scripts/
+
+# Manifests (not needed in image)
+manifests/
+
+# Python artifacts
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / temp
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+*.swp
+
+# Environment files
+.env
+.env.*

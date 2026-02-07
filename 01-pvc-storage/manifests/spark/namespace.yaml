@@ -1,0 +1,7 @@
+# Spark namespace for driver/executor pods, History Server, and RBAC
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spark
+  labels:
+    app: spark

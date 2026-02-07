@@ -1,0 +1,24 @@
+# k3d cluster configuration for Spark on Kubernetes tutorials
+# Usage: k3d cluster create --config manifests/k3d/cluster-config.yaml
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: spark-on-k8s-clstr
+servers: 1
+agents: 3
+kubeAPI:
+  hostPort: "6443"
+ports:
+  # Spark History Server UI
+  - port: 18080:18080
+    nodeFilters:
+      - loadbalancer
+  # MinIO Console
+  - port: 9001:9001
+    nodeFilters:
+      - loadbalancer
+registries:
+  create:
+    name: spark-registry
+    host: "0.0.0.0"
+    hostPort: "5111"

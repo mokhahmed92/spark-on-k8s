@@ -1,0 +1,16 @@
+# PVC for Spark event logs (used by volume-based tutorials)
+# Both Spark jobs and the History Server mount this PVC to share event log data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-events-pvc
+  namespace: spark
+  labels:
+    app: spark-history-server
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: 2Gi

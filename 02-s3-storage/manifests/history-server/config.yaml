@@ -1,0 +1,17 @@
+# ConfigMap for S3-backed Spark History Server
+# Configures the History Server to read event logs from MinIO via S3A
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-history-server-config
+  namespace: spark
+  labels:
+    app: spark-history-server
+data:
+  spark-defaults.conf: |
+    spark.history.fs.logDirectory=s3a://spark-logs/event-logs/
+    spark.history.fs.update.interval=10s
+    spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.hadoop.fs.s3a.endpoint=http://minio.minio.svc.cluster.local:9000
+    spark.hadoop.fs.s3a.path.style.access=true
+    spark.hadoop.fs.s3a.connection.ssl.enabled=false
