@@ -1,0 +1,68 @@
+# Spark Submitter Pod (Cluster Mode) — submits a Spark job to K8s from within the cluster.
+# In cluster mode, spark-submit is fire-and-forget: it sends the job spec to the K8s API,
+# which creates a separate driver pod. The submitter exits immediately after submission.
+#
+# Benefits: no local Spark installation or BouncyCastle JARs needed.
+# No headless service required — the driver pod manages its own networking.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: spark-submitter-cluster
+  namespace: spark
+  labels:
+    app: spark-submitter-cluster
+spec:
+  serviceAccountName: spark
+  restartPolicy: Never
+  containers:
+  - name: submitter
+    image: spark-registry:5111/spark-custom:v1.0
+    imagePullPolicy: IfNotPresent
+    command:
+    - /opt/spark/bin/spark-submit
+    args:
+    - --master
+    - k8s://https://kubernetes.default.svc:443
+    - --deploy-mode
+    - cluster
+    - --name
+    - wordcount-cluster
+    - --conf
+    - spark.kubernetes.namespace=spark
+    - --conf
+    - spark.kubernetes.authenticate.driver.serviceAccountName=spark
+    - --conf
+    - spark.kubernetes.container.image=spark-registry:5111/spark-custom:v1.0
+    - --conf
+    - spark.kubernetes.container.image.pullPolicy=IfNotPresent
+    - --conf
+    - spark.executor.instances=2
+    - --conf
+    - spark.executor.memory=512m
+    - --conf
+    - spark.executor.cores=1
+    - --conf
+    - spark.driver.memory=512m
+    - --conf
+    - spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.options.claimName=spark-data-pvc
+    - --conf
+    - spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.mount.path=/data
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.options.claimName=spark-data-pvc
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.mount.path=/data
+    - --conf
+    - spark.kubernetes.driver.volumes.persistentVolumeClaim.events-vol.options.claimName=spark-events-pvc
+    - --conf
+    - spark.kubernetes.driver.volumes.persistentVolumeClaim.events-vol.mount.path=/mnt/spark-events
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.events-vol.options.claimName=spark-events-pvc
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.events-vol.mount.path=/mnt/spark-events
+    - --conf
+    - spark.eventLog.enabled=true
+    - --conf
+    - spark.eventLog.dir=file:///mnt/spark-events
+    - local:///opt/spark-apps/wordcount.py
+    - /data/input/sample-input.txt
+    - /data/output/wordcount-cluster-result

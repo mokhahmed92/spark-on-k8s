@@ -15,7 +15,7 @@ The storage pattern uses a **PersistentVolumeClaim (PVC) backed by NFS**. Spark 
 
 ## Architecture
 
-> Full diagram: [docs/architecture.excalidraw](docs/architecture.excalidraw) (open with [excalidraw.com](https://excalidraw.com))
+> Full diagram: [docs/submitter-client-v2.excalidraw](docs/submitter-client-v2.excalidraw) (open with [excalidraw.com](https://excalidraw.com))
 
 ```
  ┌──────────────────┐            ┌──────────────────┐
@@ -71,10 +71,9 @@ The storage pattern uses a **PersistentVolumeClaim (PVC) backed by NFS**. Spark 
 | Docker | 24.x | Container runtime required by k3d |
 | k3d | v5.8.3 | Creates local Kubernetes cluster |
 | kubectl | v1.31.x | Kubernetes CLI |
-| Apache Spark | 3.5.4 | Provides `spark-submit` binary (cluster mode only) |
 
-> **Note**: Client mode uses a submitter pod inside the cluster, so a local Spark
-> installation is only needed for cluster mode submissions from your host machine.
+> **No local Spark installation required.** Both client and cluster modes use
+> submitter pods that run spark-submit from inside the cluster.
 
 ## Quick Start
 
@@ -178,64 +177,114 @@ kubectl apply -f manifests/spark/spark-submitter.yaml
 
 ---
 
-## Option B: Cluster Mode
+## Option B: Cluster Mode (Submitter Pod)
 
-In cluster mode, both the driver and executors run as Kubernetes pods. This is the **production-recommended** approach.
+In cluster mode, both the driver and executors run as Kubernetes pods. A **submitter pod** sends the job to the K8s API and exits immediately (fire-and-forget). This is the **production-recommended** approach.
+
+> Full diagram: [docs/architecture-cluster-mode.excalidraw](docs/architecture-cluster-mode.excalidraw) (open with [excalidraw.com](https://excalidraw.com))
+
+```
+ ┌──────────────────┐            ┌──────────────────┐
+ │  Local Machine   │  kubectl   │  K8s API Server  │
+ │  (WSL/Terminal)  │──────────▶ │                  │
+ └──────────────────┘  apply /   └────────┬─────────┘
+                       logs               │
+                                  ② creates driver pod
+                                  (from job spec)
+                                          │
+  ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+  │ K8s cluster (namespace: spark)        ▼                       │
+  │                                                               │
+  │  ┌──────────────────────────────┐                             │
+  │  │ spark-submitter-cluster Pod  │                             │
+  │  │ spark-submit --cluster       │                             │
+  │  │ (fire-and-forget → exits)    │                             │
+  │  └──────────────┬───────────────┘                             │
+  │                 │ ① submits job spec                          │
+  │                 │ to K8s API (in-cluster)                     │
+  │                 ▼                                             │
+  │       ③ creates  ┌──────────────────────────────┐             │
+  │        executors │  Driver Pod                  │  ─────┐    │
+  │      ┌─────────▶ │  ┌────────────────────────┐  │       │    │
+  │      │ via K8s   │  │ Spark Driver Process    │  │       │    │
+  │      │ API       │  └────────────────────────┘  │       │    │
+  │      │           │  /data       /mnt/spark-events│       │    │
+  │      │           └───────┬──────────────┬───────┘       │    │
+  │      │           ④ tasks │              │ tasks         │    │
+  │      │            + shuffle             │ + shuffle      │    │
+  │      │                  │              │               │    │
+  │      │                  ▼              ▼               ▼    │
+  │  ┌───┴──────────────┐  ┌──────────────────┐  ┌──────────┐ │
+  │  │  Executor Pod 1  │  │  Executor Pod 2  │  │ NFS PVC  │ │
+  │  │  /data           │  │  /data           │  │ data +   │ │
+  │  │  /mnt/spark-events│  │  /mnt/spark-events│  │ events   │ │
+  │  └────────┬─────────┘  └────────┬─────────┘  └──────────┘ │
+  │           │      ⑤ shared       │                 ▲        │
+  │           └──────── storage ────┘─────────────────┘        │
+  └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+```
+
+**Communication flow:**
+
+1. **User → K8s API** — `kubectl apply` creates the submitter pod; `kubectl logs` streams the driver output
+2. **Submitter Pod → K8s API** — The submitter runs spark-submit in cluster mode, which sends the job spec to the K8s API using in-cluster authentication. The submitter **exits immediately** after submission (fire-and-forget)
+3. **K8s API → Driver Pod** — Creates a driver pod with the `spark` ServiceAccount and PVC mounts for data and event logs
+4. **Driver → K8s API** — The driver creates executor pods using the ServiceAccount token at `/var/run/secrets/`
+5. **Executors ↔ Driver** — Executors connect to the driver pod for task scheduling and shuffle data exchange. Spark automatically creates a headless service for the driver pod
+6. **All pods → NFS PVC** — Driver and executors mount the same NFS-backed PVCs for data I/O and event logs
 
 ### Submit the Job
 
+The submitter pod manifest contains the full spark-submit command. Deploy it to run the job:
+
 ```bash
-$SPARK_HOME/bin/spark-submit \
-  --master k8s://https://127.0.0.1:6443 \
-  --deploy-mode cluster \
-  --name wordcount-cluster \
-  --conf spark.kubernetes.namespace=spark \
-  --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
-  --conf spark.kubernetes.container.image=spark-registry:5111/spark-custom:v1.0 \
-  --conf spark.kubernetes.container.image.pullPolicy=IfNotPresent \
-  --conf spark.executor.instances=2 \
-  --conf spark.executor.memory=512m \
-  --conf spark.executor.cores=1 \
-  --conf spark.driver.memory=512m \
-  --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.options.claimName=spark-data-pvc \
-  --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.mount.path=/data \
-  --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.options.claimName=spark-data-pvc \
-  --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.mount.path=/data \
-  --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.events-vol.options.claimName=spark-events-pvc \
-  --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.events-vol.mount.path=/mnt/spark-events \
-  --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.events-vol.options.claimName=spark-events-pvc \
-  --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.events-vol.mount.path=/mnt/spark-events \
-  --conf spark.eventLog.enabled=true \
-  --conf spark.eventLog.dir=file:///mnt/spark-events \
-  local:///opt/spark-apps/wordcount.py \
-  /data/input/sample-input.txt \
-  /data/output/wordcount-cluster-result
+kubectl apply -f manifests/spark/spark-submitter-cluster.yaml
 ```
 
-> **BouncyCastle requirement**: k3d uses EC (elliptic curve) keys in the kubeconfig.
-> Spark's Kubernetes client needs BouncyCastle to parse them. Add these JARs to
-> `$SPARK_HOME/jars/`:
-> ```bash
-> cd $SPARK_HOME/jars
-> curl -fsSLO https://repo1.maven.org/maven2/org/bouncycastle/bcpkix-jdk18on/1.78.1/bcpkix-jdk18on-1.78.1.jar
-> curl -fsSLO https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.78.1/bcprov-jdk18on-1.78.1.jar
-> curl -fsSLO https://repo1.maven.org/maven2/org/bouncycastle/bcutil-jdk18on/1.78.1/bcutil-jdk18on-1.78.1.jar
-> ```
+The submitter pod will submit the job and exit almost immediately. The K8s API then creates a separate driver pod that manages the job:
+
+### Monitor the Job
+
+Watch the driver pod appear and track the job:
+
+```bash
+# Watch pods — the submitter completes quickly, then a driver pod appears
+kubectl -n spark get pods -w
+
+# Follow the driver logs
+kubectl -n spark logs -f -l spark-role=driver --tail=50
+```
+
+The driver pod will complete (status `Completed`) when the job finishes. To rerun with different parameters, delete and recreate:
+
+```bash
+kubectl -n spark delete pod spark-submitter-cluster
+kubectl -n spark delete pods -l spark-role=driver
+kubectl apply -f manifests/spark/spark-submitter-cluster.yaml
+```
+
+> **Why a submitter pod?** Running spark-submit from your host machine in cluster mode
+> requires a local Spark installation and BouncyCastle JARs (for k3d's EC keys). The
+> submitter pod avoids this entirely — it uses in-cluster networking and ServiceAccount
+> authentication. spark-submit exits immediately after submission, so the submitter pod
+> consumes no resources while the job runs.
 
 ---
 
 ## Client vs Cluster Mode Comparison
 
-| Aspect | Client Mode (Submitter Pod) | Cluster Mode |
-|--------|---------------------------|--------------|
+| Aspect | Client Mode (Submitter Pod) | Cluster Mode (Submitter Pod) |
+|--------|---------------------------|------------------------------|
 | `--deploy-mode` | `client` | `cluster` |
-| Driver location | Submitter pod in cluster | Dedicated K8s pod |
-| `--master` | `k8s://https://kubernetes.default.svc:443` | `k8s://https://127.0.0.1:6443` |
+| Driver location | Submitter pod itself | Separate K8s pod (created by K8s API) |
+| Submitter behavior | Runs driver in-process (long-lived) | Fire-and-forget (exits immediately) |
+| `--master` | `k8s://https://kubernetes.default.svc:443` | `k8s://https://kubernetes.default.svc:443` |
 | Application path | `local:///opt/spark-apps/...` | `local:///opt/spark-apps/...` |
-| Volume mounts | Submitter + executor pods | Driver AND executor pods |
-| `spark.driver.host` | Submitter pod FQDN | Not needed |
-| Driver logs | Terminal output (kubectl exec) | `kubectl logs` |
-| Local Spark install | Not needed | Required |
+| Volume mounts | Submitter + executor pods | Driver + executor pods (not submitter) |
+| `spark.driver.host` | Submitter pod FQDN (headless Service) | Not needed (K8s manages driver networking) |
+| Headless Service | Required (executor → driver DNS) | Not needed |
+| Driver logs | `kubectl logs spark-submitter` | `kubectl logs -l spark-role=driver` |
+| Local Spark install | Not needed | Not needed |
 | Use case | Development, debugging | Production |
 
 ---
@@ -248,21 +297,33 @@ Monitor pods:
 kubectl -n spark get pods -w
 ```
 
-View driver logs (cluster mode only):
+Check output (client mode):
 
 ```bash
-kubectl -n spark logs -l spark-role=driver --tail=50
-```
-
-Check output:
-
-```bash
+# The submitter pod has the PVC mounted, so we can check directly
 kubectl -n spark exec spark-submitter -- \
   cat /data/output/wordcount-client-result/_SUCCESS
 
-# View the word count results
 kubectl -n spark exec spark-submitter -- \
   bash -c "cat /data/output/wordcount-client-result/*.csv | head -20"
+```
+
+Check output (cluster mode):
+
+```bash
+# Use a temporary pod since the cluster mode submitter has no PVC mounts
+kubectl -n spark run data-check --image=busybox --restart=Never --rm -it \
+  --overrides='{
+    "spec": {
+      "containers": [{
+        "name": "data-check",
+        "image": "busybox",
+        "command": ["cat", "/data/output/wordcount-cluster-result/_SUCCESS"],
+        "volumeMounts": [{"name": "data", "mountPath": "/data"}]
+      }],
+      "volumes": [{"name": "data", "persistentVolumeClaim": {"claimName": "spark-data-pvc"}}]
+    }
+  }'
 ```
 
 Access History Server:
@@ -275,10 +336,16 @@ kubectl -n spark port-forward svc/spark-history-server 18080:18080
 ## Cleanup
 
 ```bash
-kubectl -n spark delete pod spark-submitter
-kubectl -n spark delete svc spark-submitter-headless
+# Delete submitter pods
+kubectl -n spark delete pod spark-submitter --ignore-not-found
+kubectl -n spark delete svc spark-submitter-headless --ignore-not-found
+kubectl -n spark delete pod spark-submitter-cluster --ignore-not-found
+
+# Delete Spark driver/executor pods
 kubectl -n spark delete pods -l spark-role=driver
 kubectl -n spark delete pods -l spark-role=executor
+
+# Tear down the entire cluster
 ./scripts/cleanup.sh
 ```
 
