@@ -10,6 +10,9 @@ TUTORIAL_DIR="$(dirname "$SCRIPT_DIR")"
 
 CLUSTER_NAME="spark-on-k8s-clstr"
 CONFIG_FILE="${TUTORIAL_DIR}/manifests/k3d/cluster-config.yaml"
+K3S_NFS_IMAGE="k3s-nfs:v1.31.5-k3s1"
+K3S_NFS_DOCKERFILE="${TUTORIAL_DIR}/manifests/k3d/Dockerfile.k3s-nfs"
+K3S_NFS_CONTEXT="${TUTORIAL_DIR}/manifests/k3d"
 DRY_RUN=false
 
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -26,14 +29,27 @@ if k3d cluster list 2>/dev/null | grep -q "${CLUSTER_NAME}"; then
   exit 0
 fi
 
-echo "Step 1: Creating k3d cluster with config from ${CONFIG_FILE}..."
+echo "Step 1: Ensuring custom k3s-nfs node image exists..."
+echo "  (Default k3s images lack NFS client tools needed for RWX PVCs)"
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  docker build -t ${K3S_NFS_IMAGE} -f ${K3S_NFS_DOCKERFILE} ${K3S_NFS_CONTEXT}"
+else
+  if docker image inspect "${K3S_NFS_IMAGE}" &>/dev/null; then
+    echo "  Image '${K3S_NFS_IMAGE}' already exists. Skipping build."
+  else
+    echo "  Building ${K3S_NFS_IMAGE}..."
+    docker build -t "${K3S_NFS_IMAGE}" -f "${K3S_NFS_DOCKERFILE}" "${K3S_NFS_CONTEXT}"
+  fi
+fi
+
+echo "Step 2: Creating k3d cluster with config from ${CONFIG_FILE}..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  k3d cluster create --config ${CONFIG_FILE}"
 else
   k3d cluster create --config "${CONFIG_FILE}"
 fi
 
-echo "Step 2: Verifying cluster nodes are ready..."
+echo "Step 3: Verifying cluster nodes are ready..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  kubectl get nodes"
 else
@@ -43,7 +59,7 @@ else
   kubectl wait --for=condition=Ready nodes --all --timeout=120s
 fi
 
-echo "Step 3: Verifying local registry is running..."
+echo "Step 4: Verifying local registry is running..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  docker ps --filter name=spark-registry"
 else

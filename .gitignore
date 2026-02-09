@@ -41,5 +41,4 @@ kubeconfig*
 # Docker build artifacts
 *.log
 
-docs/
 CLAUDE.md

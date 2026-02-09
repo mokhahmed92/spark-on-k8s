@@ -17,7 +17,7 @@ fi
 
 echo "=== Setting up Spark History Server (PVC-backed) ==="
 
-echo "Step 0: Ensuring NFS provisioner is deployed (required for RWX PVCs)..."
+echo "Step 1: Deploying NFS provisioner (required for RWX PVCs)..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  kubectl apply -f ${TUTORIAL_DIR}/manifests/storage/nfs-provisioner.yaml"
   echo "  kubectl -n nfs-provisioner wait --for=condition=Ready pod -l app=nfs-provisioner --timeout=120s"
@@ -28,35 +28,35 @@ else
   echo "NFS provisioner is ready."
 fi
 
-echo "Step 1: Creating event logs PVC..."
+echo "Step 2: Creating event logs PVC..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  kubectl apply -f ${TUTORIAL_DIR}/manifests/history-server/pvc.yaml"
 else
   kubectl apply -f "${TUTORIAL_DIR}/manifests/history-server/pvc.yaml"
 fi
 
-echo "Step 2: Creating History Server ConfigMap..."
+echo "Step 3: Creating History Server ConfigMap..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  kubectl apply -f ${TUTORIAL_DIR}/manifests/history-server/config.yaml"
 else
   kubectl apply -f "${TUTORIAL_DIR}/manifests/history-server/config.yaml"
 fi
 
-echo "Step 3: Deploying History Server..."
+echo "Step 4: Deploying History Server..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  kubectl apply -f ${TUTORIAL_DIR}/manifests/history-server/deployment.yaml"
 else
   kubectl apply -f "${TUTORIAL_DIR}/manifests/history-server/deployment.yaml"
 fi
 
-echo "Step 4: Creating History Server service..."
+echo "Step 5: Creating History Server service..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  kubectl apply -f ${TUTORIAL_DIR}/manifests/history-server/service.yaml"
 else
   kubectl apply -f "${TUTORIAL_DIR}/manifests/history-server/service.yaml"
 fi
 
-echo "Step 5: Waiting for History Server pod to be ready..."
+echo "Step 6: Waiting for History Server pod to be ready..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  kubectl -n spark wait --for=condition=Ready pod -l app=spark-history-server --timeout=120s"
 else
@@ -64,7 +64,7 @@ else
   echo "History Server is ready."
 fi
 
-echo "Step 6: Verifying deployment..."
+echo "Step 7: Verifying deployment..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  kubectl -n spark get pods -l app=spark-history-server"
 else

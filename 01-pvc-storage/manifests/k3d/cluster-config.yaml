@@ -1,9 +1,15 @@
 # k3d cluster configuration for Spark on Kubernetes tutorials
 # Usage: k3d cluster create --config manifests/k3d/cluster-config.yaml
+#
+# Uses a custom k3s node image with NFS client support (nfs-utils).
+# The default k3s image lacks mount.nfs, so NFS-backed PVCs fail to mount.
+# Build the image first:
+#   docker build -t k3s-nfs:v1.31.5-k3s1 -f manifests/k3d/Dockerfile.k3s-nfs manifests/k3d/
 apiVersion: k3d.io/v1alpha5
 kind: Simple
 metadata:
   name: spark-on-k8s-clstr
+image: k3s-nfs:v1.31.5-k3s1
 servers: 1
 agents: 3
 kubeAPI:

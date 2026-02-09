@@ -1,0 +1,93 @@
+# Spark Submitter Pod — runs spark-submit in client mode from within the cluster.
+# The driver process runs inside this pod; executor pods are created alongside it.
+# Benefits: no local Spark installation needed, in-cluster networking, direct PVC access.
+#
+# A headless Service provides DNS resolution so executor pods can connect back
+# to the driver via hostname "spark-submitter".
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-submitter-headless
+  namespace: spark
+  labels:
+    app: spark-submitter
+spec:
+  clusterIP: None
+  selector:
+    app: spark-submitter
+  ports:
+  - name: driver
+    port: 7078
+    targetPort: 7078
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: spark-submitter
+  namespace: spark
+  labels:
+    app: spark-submitter
+spec:
+  hostname: spark-submitter
+  subdomain: spark-submitter-headless
+  serviceAccountName: spark
+  restartPolicy: Never
+  containers:
+  - name: submitter
+    image: spark-registry:5111/spark-custom:v1.0
+    imagePullPolicy: IfNotPresent
+    command:
+    - /opt/spark/bin/spark-submit
+    args:
+    - --master
+    - k8s://https://kubernetes.default.svc:443
+    - --deploy-mode
+    - client
+    - --name
+    - wordcount-client
+    - --conf
+    - spark.kubernetes.namespace=spark
+    - --conf
+    - spark.kubernetes.authenticate.driver.serviceAccountName=spark
+    - --conf
+    - spark.kubernetes.container.image=spark-registry:5111/spark-custom:v1.0
+    - --conf
+    - spark.kubernetes.container.image.pullPolicy=IfNotPresent
+    - --conf
+    - spark.executor.instances=2
+    - --conf
+    - spark.executor.memory=512m
+    - --conf
+    - spark.executor.cores=1
+    - --conf
+    - spark.driver.memory=512m
+    - --conf
+    - spark.driver.host=spark-submitter.spark-submitter-headless.spark.svc.cluster.local
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.options.claimName=spark-data-pvc
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.mount.path=/data
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.events-vol.options.claimName=spark-events-pvc
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.events-vol.mount.path=/mnt/spark-events
+    - --conf
+    - spark.eventLog.enabled=true
+    - --conf
+    - spark.eventLog.dir=file:///mnt/spark-events
+    - local:///opt/spark-apps/wordcount.py
+    - /data/input/sample-input.txt
+    - /data/output/wordcount-client-result
+    volumeMounts:
+    - name: data-vol
+      mountPath: /data
+    - name: events-vol
+      mountPath: /mnt/spark-events
+  volumes:
+  - name: data-vol
+    persistentVolumeClaim:
+      claimName: spark-data-pvc
+  - name: events-vol
+    persistentVolumeClaim:
+      claimName: spark-events-pvc
