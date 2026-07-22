@@ -1,0 +1,34 @@
+# k3d cluster configuration for Spark on Kubernetes with Iceberg + Polaris
+# Usage: k3d cluster create --config manifests/k3d/cluster-config.yaml
+#
+# Uses a custom k3s node image with NFS client support (nfs-utils).
+# The default k3s image lacks mount.nfs, so NFS-backed PVCs fail to mount.
+# Build the image first:
+#   docker build -t k3s-nfs:v1.31.5-k3s1 -f manifests/k3d/Dockerfile.k3s-nfs manifests/k3d/
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: spark-on-k8s-clstr
+image: k3s-nfs:v1.31.5-k3s1
+servers: 1
+agents: 3
+kubeAPI:
+  hostPort: "6443"
+ports:
+  # Spark History Server UI
+  - port: 18080:18080
+    nodeFilters:
+      - loadbalancer
+  # MinIO Console
+  - port: 9001:9001
+    nodeFilters:
+      - loadbalancer
+  # Polaris REST Catalog API
+  - port: 8181:8181
+    nodeFilters:
+      - loadbalancer
+registries:
+  create:
+    name: spark-registry
+    host: "0.0.0.0"
+    hostPort: "5111"

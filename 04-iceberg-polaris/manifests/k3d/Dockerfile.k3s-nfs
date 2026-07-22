@@ -1,0 +1,31 @@
+# Custom k3s node image with NFS client support
+# k3s images are minimal and lack nfs-utils, so the kubelet cannot mount NFS volumes.
+# This image adds nfs-utils and starts rpcbind via the k3d entrypoint hook.
+# Based on: https://github.com/jlian/k3d-nfs
+#
+# Build:  docker build -t k3s-nfs:v1.31.5-k3s1 -f Dockerfile.k3s-nfs .
+# Usage:  k3d cluster create -i k3s-nfs:v1.31.5-k3s1 --config cluster-config.yaml
+
+ARG K3S_TAG=v1.31.5-k3s1
+FROM rancher/k3s:${K3S_TAG} AS k3s
+FROM alpine:3.21
+
+RUN set -ex; \
+    apk add --no-cache iptables ip6tables nfs-utils rpcbind; \
+    echo 'hosts: files dns' > /etc/nsswitch.conf
+
+VOLUME /var/lib/kubelet
+VOLUME /var/lib/rancher/k3s
+VOLUME /var/lib/cni
+VOLUME /var/log
+
+ENV PATH="$PATH:/bin/aux"
+ENV CRI_CONFIG_FILE="/var/lib/rancher/k3s/agent/etc/crictl.yaml"
+
+COPY --from=k3s /bin /bin
+
+COPY k3d-entrypoint-nfs.sh /bin/
+RUN chmod +x /bin/k3d-entrypoint-nfs.sh
+
+ENTRYPOINT ["/bin/k3d-entrypoint-nfs.sh"]
+CMD ["agent"]

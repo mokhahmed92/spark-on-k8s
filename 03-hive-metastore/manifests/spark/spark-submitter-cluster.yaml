@@ -1,0 +1,76 @@
+# Spark Submitter Pod (Cluster Mode) — submits a Spark job to K8s from within the cluster.
+# In cluster mode, spark-submit is fire-and-forget: it sends the job spec to the K8s API,
+# which creates a separate driver pod. The submitter exits immediately after submission.
+# Hive config: catalogImplementation=hive, metastore.uris, warehouse.dir (S3A)
+# Data is stored in MinIO (S3A) — no PVC mounts needed for data or event logs.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: spark-submitter-cluster
+  namespace: spark
+  labels:
+    app: spark-submitter-cluster
+spec:
+  serviceAccountName: spark
+  restartPolicy: Never
+  containers:
+  - name: submitter
+    image: spark-registry:5111/spark-custom:v1.0
+    imagePullPolicy: IfNotPresent
+    command:
+    - /opt/spark/bin/spark-submit
+    args:
+    - --master
+    - k8s://https://kubernetes.default.svc:443
+    - --deploy-mode
+    - cluster
+    - --name
+    - hive-etl-cluster
+    - --conf
+    - spark.kubernetes.namespace=spark
+    - --conf
+    - spark.kubernetes.authenticate.driver.serviceAccountName=spark
+    - --conf
+    - spark.kubernetes.container.image=spark-registry:5111/spark-custom:v1.0
+    - --conf
+    - spark.kubernetes.container.image.pullPolicy=IfNotPresent
+    - --conf
+    - spark.executor.instances=2
+    - --conf
+    - spark.executor.memory=256m
+    - --conf
+    - spark.executor.cores=1
+    - --conf
+    - spark.driver.memory=512m
+    # S3A configuration for MinIO
+    - --conf
+    - spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+    - --conf
+    - spark.hadoop.fs.s3a.endpoint=http://minio.minio.svc.cluster.local:9000
+    - --conf
+    - spark.hadoop.fs.s3a.path.style.access=true
+    - --conf
+    - spark.hadoop.fs.s3a.connection.ssl.enabled=false
+    # Inject S3 credentials into driver and executor pods
+    - --conf
+    - spark.kubernetes.driver.secretKeyRef.AWS_ACCESS_KEY_ID=minio-credentials:AWS_ACCESS_KEY_ID
+    - --conf
+    - spark.kubernetes.driver.secretKeyRef.AWS_SECRET_ACCESS_KEY=minio-credentials:AWS_SECRET_ACCESS_KEY
+    - --conf
+    - spark.kubernetes.executor.secretKeyRef.AWS_ACCESS_KEY_ID=minio-credentials:AWS_ACCESS_KEY_ID
+    - --conf
+    - spark.kubernetes.executor.secretKeyRef.AWS_SECRET_ACCESS_KEY=minio-credentials:AWS_SECRET_ACCESS_KEY
+    # Hive Metastore configuration
+    - --conf
+    - spark.sql.catalogImplementation=hive
+    - --conf
+    - spark.hadoop.hive.metastore.uris=thrift://hive-metastore.metastore.svc.cluster.local:9083
+    - --conf
+    - spark.sql.warehouse.dir=s3a://spark-data/warehouse
+    # Event logging to S3
+    - --conf
+    - spark.eventLog.enabled=true
+    - --conf
+    - spark.eventLog.dir=s3a://spark-logs/event-logs/
+    - local:///opt/spark-apps/hive_etl.py
+    - s3a://spark-data/input/sales.csv

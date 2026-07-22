@@ -1,0 +1,15 @@
+# PostgreSQL data PVC — uses default StorageClass (local-path on k3d)
+# RWO is sufficient since PostgreSQL runs as a single pod
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data-pvc
+  namespace: metastore
+  labels:
+    app: postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

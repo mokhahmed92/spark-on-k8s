@@ -1,0 +1,7 @@
+# Metastore namespace for PostgreSQL and Hive Metastore
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: metastore
+  labels:
+    app: metastore

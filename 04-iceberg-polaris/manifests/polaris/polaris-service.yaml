@@ -1,0 +1,19 @@
+# Polaris ClusterIP service — REST catalog API + management API
+apiVersion: v1
+kind: Service
+metadata:
+  name: polaris
+  namespace: polaris
+  labels:
+    app: polaris
+spec:
+  type: ClusterIP
+  selector:
+    app: polaris
+  ports:
+    - name: catalog
+      port: 8181
+      targetPort: 8181
+    - name: management
+      port: 8182
+      targetPort: 8182

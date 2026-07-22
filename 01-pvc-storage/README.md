@@ -351,4 +351,5 @@ kubectl -n spark delete pods -l spark-role=executor
 
 ## What's Next
 
-Continue to **Tutorial 02: S3 Storage with MinIO** to learn cloud-native storage patterns using S3A.
+- **Tutorial 02: S3 Storage with MinIO** — cloud-native storage patterns using S3A
+- **Tutorial 03: Hive Metastore** — table-based data management with named tables instead of file paths

@@ -1,0 +1,46 @@
+# Hive Metastore configuration — metastore-site.xml
+# Configures PostgreSQL as the backing database and sets the warehouse directory.
+# The warehouse dir is recorded in metadata only — the metastore does NOT access data files.
+# Spark pods resolve warehouse paths via S3A to MinIO.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hive-metastore-config
+  namespace: metastore
+  labels:
+    app: hive-metastore
+data:
+  metastore-site.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+    <configuration>
+      <!-- JDBC connection to PostgreSQL -->
+      <property>
+        <name>javax.jdo.option.ConnectionURL</name>
+        <value>jdbc:postgresql://postgres.metastore.svc.cluster.local:5432/metastore_db</value>
+      </property>
+      <property>
+        <name>javax.jdo.option.ConnectionDriverName</name>
+        <value>org.postgresql.Driver</value>
+      </property>
+      <property>
+        <name>javax.jdo.option.ConnectionUserName</name>
+        <value>hive</value>
+      </property>
+      <property>
+        <name>javax.jdo.option.ConnectionPassword</name>
+        <value>hive123</value>
+      </property>
+
+      <!-- Warehouse directory — recorded in table metadata, resolved by Spark pods via S3A -->
+      <property>
+        <name>metastore.warehouse.dir</name>
+        <value>s3a://spark-data/warehouse</value>
+      </property>
+
+      <!-- Thrift service settings -->
+      <property>
+        <name>metastore.thrift.port</name>
+        <value>9083</value>
+      </property>
+    </configuration>

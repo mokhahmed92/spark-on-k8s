@@ -1,0 +1,11 @@
+id,product,category,amount,quantity,sale_date
+1,Laptop,Electronics,999.99,2,2024-01-15
+2,Mouse,Electronics,29.99,5,2024-01-15
+3,Desk,Furniture,349.99,1,2024-01-16
+4,Chair,Furniture,199.99,3,2024-01-16
+5,Keyboard,Electronics,79.99,4,2024-01-17
+6,Monitor,Electronics,449.99,2,2024-01-17
+7,Bookshelf,Furniture,129.99,2,2024-01-18
+8,Headphones,Electronics,149.99,6,2024-01-18
+9,Lamp,Furniture,59.99,3,2024-01-19
+10,Webcam,Electronics,89.99,4,2024-01-19

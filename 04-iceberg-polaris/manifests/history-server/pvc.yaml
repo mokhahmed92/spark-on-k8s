@@ -1,0 +1,16 @@
+# PVC for Spark event logs — shared between Spark jobs and the History Server
+# Uses NFS StorageClass for ReadWriteMany access across nodes
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-events-pvc
+  namespace: spark
+  labels:
+    app: spark-history-server
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: 2Gi

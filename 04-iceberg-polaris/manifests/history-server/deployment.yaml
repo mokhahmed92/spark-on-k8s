@@ -1,0 +1,58 @@
+# Spark History Server deployment — PVC-backed variant
+# Reads event logs from a shared NFS PVC mounted at /mnt/spark-events
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-history-server
+  namespace: spark
+  labels:
+    app: spark-history-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-history-server
+  template:
+    metadata:
+      labels:
+        app: spark-history-server
+    spec:
+      serviceAccountName: spark
+      containers:
+        - name: spark-history-server
+          image: spark-registry:5111/spark-custom:v1.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /opt/spark/bin/spark-class
+            - org.apache.spark.deploy.history.HistoryServer
+          env:
+            - name: SPARK_HISTORY_OPTS
+              value: "-Dspark.history.fs.logDirectory=file:///mnt/spark-events -Dspark.history.fs.update.interval=10s"
+          ports:
+            - name: http
+              containerPort: 18080
+          volumeMounts:
+            - name: spark-events
+              mountPath: /mnt/spark-events
+            - name: config
+              mountPath: /opt/spark/conf/spark-defaults.conf
+              subPath: spark-defaults.conf
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 18080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 18080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: spark-events
+          persistentVolumeClaim:
+            claimName: spark-events-pvc
+        - name: config
+          configMap:
+            name: spark-history-server-config

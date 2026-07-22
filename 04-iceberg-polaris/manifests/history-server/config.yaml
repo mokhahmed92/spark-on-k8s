@@ -1,0 +1,13 @@
+# ConfigMap for PVC-backed Spark History Server
+# Mounts spark-defaults.conf into the History Server container
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-history-server-config
+  namespace: spark
+  labels:
+    app: spark-history-server
+data:
+  spark-defaults.conf: |
+    spark.history.fs.logDirectory=file:///mnt/spark-events
+    spark.history.fs.update.interval=10s

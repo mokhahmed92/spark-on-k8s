@@ -1,0 +1,43 @@
+# Polaris bootstrap Job — initializes database schema, realm, and root principal
+# Uses the Polaris admin tool to bootstrap the metastore.
+# This Job is idempotent — safe to run multiple times.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-bootstrap
+  namespace: polaris
+  labels:
+    app: polaris
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: polaris-bootstrap
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: bootstrap
+          image: apache/polaris-admin-tool:apache-polaris-1.3.0-incubating
+          env:
+            - name: POLARIS_PERSISTENCE_TYPE
+              value: relational-jdbc
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: jdbc:postgresql://postgres.polaris.svc.cluster.local:5432/polaris
+            - name: QUARKUS_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-credentials
+                  key: QUARKUS_DATASOURCE_USERNAME
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-credentials
+                  key: QUARKUS_DATASOURCE_PASSWORD
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Bootstrapping Polaris metastore..."
+              /app/bin/polaris-admin-tool bootstrap -r default-realm -c default-realm,root,s3cr3t
+              echo "Bootstrap complete."

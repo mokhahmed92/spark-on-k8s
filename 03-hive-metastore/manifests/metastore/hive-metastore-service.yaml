@@ -1,0 +1,17 @@
+# Hive Metastore ClusterIP service — Thrift endpoint for Spark
+# Spark connects via: thrift://hive-metastore.metastore.svc.cluster.local:9083
+apiVersion: v1
+kind: Service
+metadata:
+  name: hive-metastore
+  namespace: metastore
+  labels:
+    app: hive-metastore
+spec:
+  type: ClusterIP
+  selector:
+    app: hive-metastore
+  ports:
+    - name: thrift
+      port: 9083
+      targetPort: 9083

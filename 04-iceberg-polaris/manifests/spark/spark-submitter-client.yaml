@@ -1,0 +1,116 @@
+# Spark Submitter Pod — runs spark-submit in client mode with Iceberg + Polaris catalog.
+# The driver process runs inside this pod; executor pods are created alongside it.
+# Iceberg config: REST catalog via Polaris, S3FileIO via MinIO, event logs on NFS PVC.
+#
+# A headless Service provides DNS resolution so executor pods can connect back
+# to the driver via hostname "spark-submitter".
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-submitter-headless
+  namespace: spark
+  labels:
+    app: spark-submitter
+spec:
+  clusterIP: None
+  selector:
+    app: spark-submitter
+  ports:
+  - name: driver
+    port: 7078
+    targetPort: 7078
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: spark-submitter
+  namespace: spark
+  labels:
+    app: spark-submitter
+spec:
+  hostname: spark-submitter
+  subdomain: spark-submitter-headless
+  serviceAccountName: spark
+  restartPolicy: Never
+  containers:
+  - name: submitter
+    image: spark-registry:5111/spark-custom:v1.0
+    imagePullPolicy: IfNotPresent
+    command:
+    - /opt/spark/bin/spark-submit
+    args:
+    - --master
+    - k8s://https://kubernetes.default.svc:443
+    - --deploy-mode
+    - client
+    - --name
+    - iceberg-etl-client
+    - --conf
+    - spark.kubernetes.namespace=spark
+    - --conf
+    - spark.kubernetes.authenticate.driver.serviceAccountName=spark
+    - --conf
+    - spark.kubernetes.container.image=spark-registry:5111/spark-custom:v1.0
+    - --conf
+    - spark.kubernetes.container.image.pullPolicy=IfNotPresent
+    - --conf
+    - spark.executor.instances=2
+    - --conf
+    - spark.executor.memory=512m
+    - --conf
+    - spark.executor.cores=1
+    - --conf
+    - spark.driver.memory=512m
+    - --conf
+    - spark.driver.host=spark-submitter.spark-submitter-headless.spark.svc.cluster.local
+    # --- Iceberg SQL Extensions ---
+    - --conf
+    - spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+    # --- Polaris REST Catalog ---
+    - --conf
+    - spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog
+    - --conf
+    - spark.sql.catalog.polaris.type=rest
+    - --conf
+    - spark.sql.catalog.polaris.uri=http://polaris.polaris.svc.cluster.local:8181/api/catalog
+    - --conf
+    - spark.sql.catalog.polaris.warehouse=spark_warehouse
+    # --- Polaris Authentication (OAuth2) ---
+    - --conf
+    - spark.sql.catalog.polaris.credential=root:s3cr3t
+    - --conf
+    - spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL
+    - --conf
+    - spark.sql.catalog.polaris.token-refresh-enabled=false
+    # --- S3FileIO (Direct MinIO Access) ---
+    - --conf
+    - spark.sql.catalog.polaris.io-impl=org.apache.iceberg.aws.s3.S3FileIO
+    - --conf
+    - spark.sql.catalog.polaris.s3.endpoint=http://minio.minio.svc.cluster.local:9000
+    - --conf
+    - spark.sql.catalog.polaris.s3.path-style-access=true
+    - --conf
+    - spark.sql.catalog.polaris.s3.access-key-id=minioadmin
+    - --conf
+    - spark.sql.catalog.polaris.s3.secret-access-key=minioadmin
+    - --conf
+    - spark.sql.catalog.polaris.client.region=us-east-1
+    # --- Event Logging ---
+    - --conf
+    - spark.eventLog.enabled=true
+    - --conf
+    - spark.eventLog.dir=file:///opt/spark/work-dir/events
+    # --- Executor volume mounts ---
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.events-vol.options.claimName=spark-events-pvc
+    - --conf
+    - spark.kubernetes.executor.volumes.persistentVolumeClaim.events-vol.mount.path=/opt/spark/work-dir/events
+    - local:///opt/spark-apps/iceberg_etl.py
+    volumeMounts:
+    - name: events-vol
+      mountPath: /opt/spark/work-dir/events
+  volumes:
+  - name: events-vol
+    persistentVolumeClaim:
+      claimName: spark-events-pvc

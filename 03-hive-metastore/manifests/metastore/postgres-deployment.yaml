@@ -1,0 +1,57 @@
+# PostgreSQL deployment — backend database for the Hive Metastore
+# Stores table metadata (schemas, locations, partitions) only — not actual data
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: metastore
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: postgres-credentials
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - hive
+                - -d
+                - metastore_db
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - hive
+                - -d
+                - metastore_db
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-data-pvc
